@@ -91,19 +91,24 @@ static int __linuxu_plat_initrd_init(void)
 	    uk_pr_info("No initrd present.\n");
     } else {
 	    uk_pr_info("Initrd is present: %s\n", initrd_file);
+        int initrd_fd = sys_open(initrd_file, O_RDONLY, 0);
+        if (initrd_fd < 0) {
+            uk_pr_err("Failed to open intrd file");
+            return -1;
+        }
+        /**
+         * Find initrd file size
+         */
+        struct stat file_info;
+        if (sys_fstat(initrd_fd, &file_info) < 0) {
+            uk_pr_err("sys_fstat failed for initrd file");
+            return -1;
+        }
+        _liblinuxuplat_opts.initrd.len = file_info.st_size;
         /**
         * Allocate initrd memory
         */
-        _liblinuxuplat_opts.initrd.len = 20 * MB2B;
         if(_liblinuxuplat_opts.initrd.len > 0) {
-            int initrd_fd = sys_open(initrd_file, O_RDONLY, 0);
-            if (initrd_fd < 0) {
-                return -1;
-            }
-            //struct stat file_info;
-            //if (fstat(initrd_fd, &file_info) < 0) {
-            //    return -1;
-            //}
             pret = sys_mmap((void *) _liblinuxuplat_opts.heap.len, _liblinuxuplat_opts.initrd.len,
                              PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE, initrd_fd,
                              0);
@@ -114,6 +119,9 @@ static int __linuxu_plat_initrd_init(void)
             } else {
                 _liblinuxuplat_opts.initrd.base = pret;
             }
+        } else {
+            uk_pr_err("empty initrd file given");
+            return -1;
         }
     }
     return rc;
