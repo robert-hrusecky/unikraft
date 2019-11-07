@@ -53,7 +53,7 @@
 static __u32 heap_size = CONFIG_LINUXU_DEFAULT_HEAPMB;
 UK_LIB_PARAM(heap_size, __u32);
 
-static const char *initrd_file = "";
+static const char *initrd_file = NULL;
 UK_LIB_PARAM_STR(initrd_file);
 
 static int __linuxu_plat_heap_init(void)
