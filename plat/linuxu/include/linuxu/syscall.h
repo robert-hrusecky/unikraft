@@ -70,6 +70,15 @@ static inline ssize_t sys_write(int fd, const char *buf, size_t len)
 				  (long) (len));
 }
 
+struct stat;
+
+static inline int sys_fstat(int fd, struct stat *statbuf)
+{
+    return (int) syscall2(__SC_FSTAT,
+              (long) (fd),
+              (long) (statbuf));
+}
+
 static inline int sys_exit(int status)
 {
 	return (int) syscall1(__SC_EXIT,
