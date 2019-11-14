@@ -1,0 +1,4 @@
+config LIBINITRAMFS
+	bool "initramfs: initrd/initramfs cpio extraction"
+	default n
+	depends on LIBRAMFS
