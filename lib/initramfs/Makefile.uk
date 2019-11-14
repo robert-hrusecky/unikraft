@@ -1,0 +1,7 @@
+$(eval $(call addlib_s,libinitramfs,$(CONFIG_LIBINITRAMFS)))
+
+# LIBINITRAMFS_CFLAGS-$(call gcc_version_ge,8,0) += -Wno-cast-function-type
+
+CINCLUDES-$(LIBINITRAMFS) += $(LIBINITRAMFS_BASE)/include
+CXXINCLUDES-$(LIBINITRAMFS) += $(LIBINITRAMFS_BASE)/include
+LIBINITRAMFS_SRCS-y += $(LIBINITRAMFS_BASE)/initramfs.c
