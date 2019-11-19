@@ -3,6 +3,10 @@
 #include <string.h>
 #include <uk/initramfs.h>
 #include <uk/hexdump.h>
+#include <sys/mount.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #define CPIO_MAGIC_NEWC "070701"
 #define CPIO_MAGIC_CRC "070702"
@@ -59,7 +63,7 @@ static void print_header(struct cpio_header *header)
     hexdump(sizeof(header->ref_major), header->ref_major);
     printf("%s: ", "ref_minor");
     hexdump(sizeof(header->ref_minor), header->ref_minor);
-    printf("%s: ", "namesize");
+    printf("%s: ", "namesizeull_terminate");
     hexdump(sizeof(header->namesize), header->namesize);
     printf("%s: ", "chksum");
     hexdump(sizeof(header->chksum), header->chksum);
@@ -100,5 +104,32 @@ int initramfs_init(struct ukplat_memregion_desc *desc)
     int size = to_int(sizeof(header->namesize), header->namesize);
     printf("Filename size using our method: %d\n", size);
     printf("Filename: %s\n", (char*)((char*)desc->base + sizeof(struct cpio_header)));
+
+
+    mount("", "/", "ramfs", 0, NULL);
+    printf("%s\n", mkdir("/testdir", 0x777) < 0 ? "Failed" : "yay");
+    int fd = open("/testdir/testfile", O_CREAT | O_RDWR);
+    if (fd < 0) {
+        printf("bad\n");
+    }
+    char* msg = "hello, world ramfs!";
+    long len = strlen(msg);
+    char buff[1024];
+    if (write(fd, msg, len) < 0) {
+        printf("write failed\n");
+    }
+    if (lseek(fd, 0, SEEK_SET) < 0) {
+        printf("seek failed\n");
+    }
+    if (read(fd, &buff[0], len) < 0) {
+        printf("read failed\n");
+    }
+    if (close(fd) < 0) {
+        printf("close failed\n");
+    }
+    buff[len + 1] = '\0';
+    printf("%s", &buff[0]);
+    
+
     return 0;
 } 
