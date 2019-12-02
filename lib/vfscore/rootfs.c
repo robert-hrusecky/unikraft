@@ -42,6 +42,10 @@
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <uk/init.h>
+#ifdef CONFIG_LIBINITRAMFS
+#include <uk/plat/memory.h>
+#include <uk/initramfs.h>
+#endif
 
 static const char *rootfs   = CONFIG_LIBVFSCORE_ROOTFS;
 
@@ -80,11 +84,24 @@ static int vfscore_rootfs(void)
 		return -1;
 	}
 
+#ifdef CONFIG_LIBINITRAMFS
+    struct ukplat_memregion_desc memregion_desc;
+    int initrd;
+    initrd = ukplat_memregion_find_initrd0(&memregion_desc);
+    if (initrd != -1) {
+        ukplat_memregion_get(initrd, &memregion_desc);
+        return initramfs_init(&memregion_desc);
+    }
+    else {
+        uk_pr_crit("Failed to mount initrd\n");
+    }
+#else
 	uk_pr_info("Mount %s to /...\n", rootfs);
 	if (mount(rootdev, "/", rootfs, rootflags, rootopts) != 0) {
 		uk_pr_crit("Failed to mount /: %d\n", errno);
 		return -1;
 	}
+#endif
 
 	/*
 	 * TODO: Alternatively we could extract an archive found

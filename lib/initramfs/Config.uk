@@ -2,5 +2,6 @@ config LIBINITRAMFS
 	bool "initramfs: initrd/initramfs cpio extraction"
 	default n
     select LIBVFSCORE
+        select LIBVFSCORE_AUTOMOUNT_ROOTFS
     select LIBRAMFS
     select LIBUKLIBPARAM
