@@ -1,5 +1,3 @@
-parse_json
-json_value
-json_object
-json_array
-VALUE_TYPE
+diagnostic_entry
+add_entry
+run_diag_function
