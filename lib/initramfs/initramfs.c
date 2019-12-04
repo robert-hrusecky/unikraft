@@ -10,8 +10,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include <errno.h>
-
 #define CPIO_MAGIC_NEWC "070701"
 #define CPIO_MAGIC_CRC "070702"
 #define FILE_TYPE_MASK 0170000
@@ -103,7 +101,6 @@ static char* absolute_path(char* path)
 
 static int read_section(struct cpio_header **header_ptr)
 {
-    int r;
     if (strcmp(filename(*header_ptr), "TRAILER!!!") == 0) {
         *header_ptr = NULL;
         return SUCCESS;
