@@ -5,44 +5,41 @@
 #include <stdint.h>
 
 typedef enum {
-    VALUE_OBJECT,
-    VALUE_ARRAY,
-    VALUE_STRING,
-    VALUE_INT,
-    VALUE_FLOAT,
-    VALUE_TRUE,
-    VALUE_FALSE,
-    VALUE_NULL,
-} VALUE_TYPE;
+    JSON_OBJECT,
+    JSON_ARRAY,
+    JSON_STRING,
+    JSON_INT,
+    JSON_FLOAT,
+    JSON_TRUE,
+    JSON_FALSE,
+    JSON_NULL,
+    JSON_ERROR,
+} json_value_t;
 
-struct object {
+struct json_object {
     char* key;
-    struct value* value;
-    struct object* next;
+    struct json_value* value;
+    struct json_object* next;
 };
 
-struct array {
-    struct value* value;
-    struct array* next;
+struct json_array {
+    struct json_value* value;
+    struct json_array* next;
 };
 
-struct value {
-    VALUE_TYPE type;
+struct json_value {
+    json_value_t type;
     union {
-        struct object* object;
-        struct array* array;
+        struct json_object* object;
+        struct json_array* array;
         char* string;
         int64_t integer;
         double floating;
     };
 };
 
-struct json {
-    struct value* element;
-};
 
-
-struct json* parse_json(const char* data, size_t len);
+struct json_value* parse_json(const char* data, const size_t len);
 
 
 #endif
