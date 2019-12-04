@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-#include <dirent.h>
 
 #include <uk/initramfs.h>
 #include <uk/hexdump.h>
@@ -10,6 +9,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+
+#include <errno.h>
 
 #define CPIO_MAGIC_NEWC "070701"
 #define CPIO_MAGIC_CRC "070702"
@@ -34,45 +35,15 @@ struct cpio_header {
     char chksum[8];
 };
 
-static void hexdump(size_t len, char* loc)
+static bool valid_magic(struct cpio_header* header)
 {
-    size_t i;
-    for (i = 0; i < len; i++) {
-        printf("%c", (unsigned char)*(loc+i));
-    }
-    printf("\n");
-}
-
-static void print_header(struct cpio_header *header)
-{
-    printf("%s: ", "magic");
-    hexdump(sizeof(header->magic), header->magic);
-    printf("%s: ", "inode_num");
-    hexdump(sizeof(header->inode_num), header->inode_num);
-    printf("%s: ", "mode");
-    hexdump(sizeof(header->mode), header->mode);
-    printf("%s: ", "uid");
-    hexdump(sizeof(header->uid), header->uid);
-    printf("%s: ", "gid");
-    hexdump(sizeof(header->gid), header->gid);
-    printf("%s: ", "nlink");
-    hexdump(sizeof(header->nlink), header->nlink);
-    printf("%s: ", "mtime");
-    hexdump(sizeof(header->mtime), header->mtime);
-    printf("%s: ", "filesize");
-    hexdump(sizeof(header->filesize), header->filesize);
-    printf("%s: ", "major");
-    hexdump(sizeof(header->major), header->major);
-    printf("%s: ", "minor");
-    hexdump(sizeof(header->minor), header->minor);
-    printf("%s: ", "ref_major");
-    hexdump(sizeof(header->ref_major), header->ref_major);
-    printf("%s: ", "ref_minor");
-    hexdump(sizeof(header->ref_minor), header->ref_minor);
-    printf("%s: ", "namesize");
-    hexdump(sizeof(header->namesize), header->namesize);
-    printf("%s: ", "chksum");
-    hexdump(sizeof(header->chksum), header->chksum);
+    char *magic_string = (char*)malloc(7);
+    memcpy(magic_string, header->magic, 6);
+    magic_string[6] = '\0';
+    bool header_match = strcmp(magic_string, CPIO_MAGIC_NEWC) == 0
+     || strcmp(magic_string, CPIO_MAGIC_CRC) == 0;
+    free(magic_string);
+    return header_match;
 }
 
 static unsigned int to_int(size_t len, char *loc)
@@ -88,14 +59,6 @@ static unsigned int to_int(size_t len, char *loc)
         }
     }
     return val;
-}
-
-static char* null_terminate(size_t len, char *loc)
-{
-    char* to_return = (char*)malloc(len+1);
-    memset(to_return, 0, len+1);
-    memcpy(to_return, loc, len);
-    return to_return; 
 }
 
 static void* align_4(void* input_ptr)
@@ -138,45 +101,68 @@ static char* absolute_path(char* path)
     return abs_path;
 }
 
-static struct cpio_header* read_section(struct cpio_header *header)
+static int read_section(struct cpio_header **header_ptr)
 {
-    if (strcmp(filename(header), "TRAILER!!!") == 0) {
-        return NULL;
+    int r;
+    if (strcmp(filename(*header_ptr), "TRAILER!!!") == 0) {
+        *header_ptr = NULL;
+        return SUCCESS;
     }
-    //printf("Header for: %s\n", filename(header));
-    //print_header(header);
+
+    if (!valid_magic(*header_ptr)) {
+        *header_ptr = NULL;
+        return -INVALID_HEADER;
+    }
+
+    struct cpio_header* header = *header_ptr;
     char* path_from_root = absolute_path(filename(header));
     if (is_file(header) && to_int(8, header->filesize) != 0) {
-        //printf("Writing to file %s...\n", path_from_root);
-        //TODO: error check the rest of this if
         int fd = open(path_from_root, O_CREAT | O_RDWR);
-        char *data_location = (char*)align_4((char*)(header) + sizeof(struct cpio_header) + to_int(8, header->namesize));
-        //char *data = null_terminate(to_int(8, header->filesize), data_location);
-        //printf("Data is located at: %p with a length of %d bytes %d \n", data_location, to_int(8, header->filesize), fd);
-        //printf("Data: %s", data);
-        write(fd, data_location, to_int(8, header->filesize));
-        chmod(path_from_root, mode(header) & 0777);
-        close(fd);
-        //free(data);
+        if (fd < 0) {
+            *header_ptr = NULL;
+            return -FILE_CREATE_FAILED;
+        }
+        char *data_location = (char*)align_4((char*)(header)
+         + sizeof(struct cpio_header) + to_int(8, header->namesize));
+        if (write(fd, data_location, to_int(8, header->filesize)) < 0) {
+            *header_ptr = NULL;
+            return -FILE_WRITE_FAILED;
+        }
+        if (chmod(path_from_root, mode(header) & 0777) < 0) {
+            *header_ptr = NULL;
+            return -FILE_CHMOD_FAILED;
+        }
+        if (close(fd) < 0) {
+            *header_ptr = NULL;
+            return -FILE_CLOSE_FAILED;
+        }
     }
     else if (is_dir(header)) {
-        //printf("Making directory %s...\n", path_from_root);
-        //TODO: error check this
-        mkdir(path_from_root, mode(header) & 0777);
+        if (strcmp("/.", path_from_root) != 0
+         && mkdir(path_from_root, mode(header) & 0777) < 0) {
+            *header_ptr = NULL;
+            return -MKDIR_FAILED;
+        }
     }
     free(path_from_root);
-    struct cpio_header *next_header = (struct cpio_header*)align_4((char*)header + sizeof(struct cpio_header) + to_int(8, header->namesize));   
+    struct cpio_header *next_header = (struct cpio_header*)align_4((char*)header
+     + sizeof(struct cpio_header) + to_int(8, header->namesize));   
     next_header = (struct cpio_header*)align_4((char*)next_header + to_int(8, header->filesize));
-    return next_header;
+    *header_ptr = next_header;
+    return SUCCESS;
 }
 
 int initramfs_init(struct ukplat_memregion_desc *desc)
 {   
+    int error = SUCCESS;
     struct cpio_header *header = (struct cpio_header *)(desc->base);
-    //TODO: error check this
-    mount("", "/", "ramfs", 0, NULL);
-    while (header != NULL && (char*)header <= (char*)desc->base + desc->len) {
-        header = read_section(header);
+    struct cpio_header **header_ptr = &header;
+    if (mount("", "/", "ramfs", 0, NULL) < 0) {
+        return MOUNT_FAILED;
     }
-    return 0;
+    while (error == SUCCESS && header != NULL) {
+        error = read_section(header_ptr);
+        header = *header_ptr;
+    }
+    return error;
 } 

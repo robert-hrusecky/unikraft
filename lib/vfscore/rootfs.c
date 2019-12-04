@@ -90,10 +90,15 @@ static int vfscore_rootfs(void)
     initrd = ukplat_memregion_find_initrd0(&memregion_desc);
     if (initrd != -1) {
         ukplat_memregion_get(initrd, &memregion_desc);
-        return initramfs_init(&memregion_desc);
+        initrd = initramfs_init(&memregion_desc);
+        if (initrd < 0) {
+        	uk_pr_err("Failed to mount initrd\n");
+        }
+        return initrd;
     }
     else {
-        uk_pr_crit("Failed to mount initrd\n");
+        uk_pr_err("Failed to mount initrd\n");
+        return -NO_MEMREGION;
     }
 #else
 	uk_pr_info("Mount %s to /...\n", rootfs);
