@@ -1,0 +1,3 @@
+config LIBUKDIAGNOSTIC
+	bool "ukdiagnostic: diagnostic tool for system introspection"
+	default n
