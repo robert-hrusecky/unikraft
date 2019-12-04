@@ -4,7 +4,6 @@
 #include <stdbool.h>
 
 #include <uk/initramfs.h>
-#include <uk/hexdump.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <fcntl.h>
