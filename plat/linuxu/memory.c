@@ -147,7 +147,7 @@ int ukplat_memregion_count(void)
     //initrd has to be allocated after the heap has been initialized
     if (!have_initrd) {
         /*
-        * NOTE: The initrd can size be changed by a library parameter.
+        * NOTE: The initrd size can be changed by a library parameter.
         */
         rc = __linuxu_plat_initrd_init();
         have_initrd = (rc == 0) ? 1 : 0;

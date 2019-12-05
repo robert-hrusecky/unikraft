@@ -49,7 +49,11 @@
 
 int ukplat_memregion_count(void)
 {
+#if (defined __ARM_32__) || (defined __ARM_64__)
 	return (int) _libxenplat_mrd_num + 7;
+#elif (defined __X86_32__) || (defined __X86_64__)
+	return (int) _libxenplat_mrd_num + 8;
+#endif
 }
 
 int ukplat_memregion_get(int i, struct ukplat_memregion_desc *m)
@@ -125,6 +129,21 @@ int ukplat_memregion_get(int i, struct ukplat_memregion_desc *m)
 		m->name  = "bss";
 #endif
 		break;
+#if (defined __X86_32__) || (defined __X86_64__)
+	case 7: /* initrd */
+		//m->base  = (void *) __BSS_START;
+		m->base = (void *) HYPERVISOR_start_info->mod_start;
+		//m->len   = (size_t) __END - (size_t) __BSS_START;
+		m->len = HYPERVISOR_start_info->mod_len;
+		m->flags = (UKPLAT_MEMRF_RESERVED
+			    | UKPLAT_MEMRF_READABLE
+			    | UKPLAT_MEMRF_WRITABLE
+			    | UKPLAT_MEMRF_INITRD);
+#if CONFIG_UKPLAT_MEMRNAME
+		m->name  = "intird";
+#endif /* CONFIG_UKPLAT_MEMRNAME */
+		break;
+#endif /* (defined __X86_32__) || (defined __X86_64__) */
 	default:
 		if (i < 0 || i >= ukplat_memregion_count()) {
 			m->base  = __NULL;
@@ -135,7 +154,11 @@ int ukplat_memregion_get(int i, struct ukplat_memregion_desc *m)
 #endif
 			return -1;
 		} else {
+#if (defined __ARM_32__) || (defined __ARM_64__)
 			memcpy(m, &_libxenplat_mrd[i - 7], sizeof(*m));
+#elif (defined __X86_32__) || (defined __X86_64__)
+			memcpy(m, &_libxenplat_mrd[i - 8], sizeof(*m));
+#endif
 		}
 		break;
 	}
