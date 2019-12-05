@@ -38,10 +38,3 @@ int run_diag_function(char *name, int *out) {
     return 0;
 }
 
-static int test_function() {
-    printf("Running test_function\n");
-    return 10;
-}
-
-DIAGNOSTIC_FUNCTION("test function" ,test_static);
-

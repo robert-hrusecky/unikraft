@@ -15,7 +15,7 @@ struct diagnostic_entry {
 };
 
 void add_entry(struct diagnostic_entry *entry);
-int run_diagnostic_function(char *name, int *out);
+int run_diag_function(char *name, int *out);
 
 #define DIAGNOSTIC_FUNCTION(name,fn)  \
     static struct diagnostic_entry __STRINGCONCAT(DIAG_ENTRY__, fn) = { \
