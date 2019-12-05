@@ -41,5 +41,9 @@ struct json_value {
 
 struct json_value* parse_json(const char* data, const size_t len);
 
+void free_json_value(struct json_value* value);
+
+struct json_value* json_object_lookup(struct json_value* object_value, const char* key);
+
 
 #endif

@@ -1,5 +1,7 @@
 parse_json
+free_json_value
+json_object_lookup
 json_value
 json_object
 json_array
-VALUE_TYPE
+json_value_t
